@@ -374,7 +374,10 @@ try_AUTH(Socket, Options, AuthTypes) ->
 			Username = to_binary(proplists:get_value(username, Options)),
 			Password = to_binary(proplists:get_value(password, Options)),
 			trace(Options, "Auth types: ~p~n", [AuthTypes]),
-			Types = re:split(AuthTypes, " ", [{return, list}, trim]),
+			Types = case AuthTypes of
+                  true -> ?AUTH_PREFERENCE;
+                  _ -> re:split(AuthTypes, " ", [{return, list}, trim])
+              end,
 			case do_AUTH(Socket, Username, Password, Types, Options) of
 				false ->
 					case proplists:get_value(auth, Options) of
