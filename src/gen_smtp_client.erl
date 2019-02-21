@@ -407,8 +407,14 @@ do_AUTH(Socket, Username, Password, Types, Options) ->
 	do_AUTH_each(Socket, Username, Password, AllowedTypes, Options).
 
 -spec do_AUTH_each(Socket :: socket:socket(), Username :: binary(), Password :: binary(), AuthTypes :: [string()], Options :: list()) -> boolean().
-do_AUTH_each(_Socket, _Username, _Password, [], _Options) ->
-	false;
+do_AUTH_each(Socket, Username, Password, [], Options) ->
+  trace(Options, "Exhausted built in authentication options~n", []),
+  case proplists:get_value(auth_fun, Options) of
+    undefined -> false;
+    AuthFn ->
+          trace(Options, "Trying provided auth_fun~n", []),
+          try_AUTH_fun(Socket, Username, Password, Options, undefined, AuthFn, undefined)
+  end;
 do_AUTH_each(Socket, Username, Password, ["CRAM-MD5" | Tail], Options) ->
 	socket:send(Socket, "AUTH CRAM-MD5\r\n"),
 	case read_possible_multiline_reply(Socket) of
@@ -702,6 +708,16 @@ parse_extensions(Reply, Options) ->
 						end
 				end
 		end  || Entry <- Reply2].
+
+try_AUTH_fun(Socket, Username, Password, Options, State, AuthFn, LastResponse) ->
+    case AuthFn(Username, Password, Options, State, LastResponse) of
+        ok -> true;
+        {send, Data, State2} -> socket:send(Socket, Data),
+                                {ok, Response} = read_possible_multiline_reply(Socket),
+                                try_AUTH_fun(Socket,  Username, Password, Options, State2, AuthFn, Response);
+        _error -> false
+    end.
+
 
 trace(Options, Format, Args) ->
 	case proplists:get_value(trace_fun, Options) of
