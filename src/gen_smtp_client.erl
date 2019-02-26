@@ -542,7 +542,8 @@ try_STARTTLS(Socket, Options, Extensions) ->
 			quit(Socket),
 			erlang:throw({missing_requirement, tls});
 		_ ->
-			trace(Options, "TLS not requested ~p~n", [Options]),
+      FilteredOptions = proplists:delete(password, Options),
+			trace(Options, "TLS not requested ~p~n", [FilteredOptions]),
 			{Socket, Extensions}
 	end.
 
