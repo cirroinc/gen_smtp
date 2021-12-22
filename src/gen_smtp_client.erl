@@ -867,7 +867,7 @@ parse_extensions(Reply, Options) ->
 try_AUTH_fun(Socket, Username, Password, Options, State, AuthFn, LastResponse) ->
     case AuthFn(Username, Password, Options, State, LastResponse) of
         ok -> true;
-        {send, Data, State2} -> socket:send(Socket, Data),
+        {send, Data, State2} -> smtp_socket:send(Socket, Data),
                                 {ok, Response} = read_possible_multiline_reply(Socket),
                                 try_AUTH_fun(Socket,  Username, Password, Options, State2, AuthFn, Response);
         _error -> false
