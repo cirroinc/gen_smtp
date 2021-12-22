@@ -1,0 +1,64 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+
+  ci:
+    name: Test on OTP ${{ matrix.otp }} / Profile ${{ matrix.profile }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        otp: ["24", "23", "22"]
+        rebar3: ["3.17.0"]
+        profile: [test, ranch_v2]
+        include:
+          - os: ubuntu-latest
+            otp: "21"
+            rebar3: "3.15.2"
+            profile: "test"
+          - os: ubuntu-latest
+            otp: "21"
+            rebar3: "3.15.2"
+            profile: "ranch_v2"
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{ matrix.otp }}
+          rebar3-version: ${{ matrix.rebar3 }}
+
+      - name: Cache Hex packages
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/rebar3/hex/hexpm/packages
+          key: ${{ runner.os }}-hex-${{ hashFiles('**/rebar.lock') }}
+          restore-keys: ${{ runner.os }}-hex-
+
+      - name: Cache Dialyzer PLTs
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cache/rebar3/rebar3_*_plt
+            _build/dialyzer/rebar3_*_plt
+          key: ${{ runner.os }}-${{ matrix.otp }}-dialyzer-${{ hashFiles('**/rebar.config') }}
+          restore-keys: ${{ runner.os }}-${{ matrix.otp }}-dialyzer-
+
+      - name: Xref
+        run: make xref
+
+      - name: Test
+        run: make test REBAR_PROFILE=${{ matrix.profile }}
+
+      - name: Proper
+        run: make proper REBAR_PROFILE=${{ matrix.profile }}
+
+      - name: Cover
+        run: make cover REBAR_PROFILE=${{ matrix.profile }}
+
+      - name: Dialyzer
+        run: make dialyze
